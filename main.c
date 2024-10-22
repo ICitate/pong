@@ -11,6 +11,9 @@ int screenHeight = 450;
 
 int MAX_VELOCITY = 10;
 
+int PLAYER_RECT_W = 8;
+int PLAYER_RECT_H = 80;
+
 typedef struct {
     Vector2 pos;
     Vector2 vel;
@@ -73,6 +76,7 @@ void UpdateBall(Ball *ball) {
         printf("acc x: %.3f\n", ball->acc.x);
     }
 
+    // out of bounds in y
     if (ball->pos.y < 0 || ball->pos.y > screenHeight) {
         printf("OUT OF BOUNDS IN Y\n");
         ball->acc.y *= -sign(ball->pos.y * ball->acc.y);
@@ -80,6 +84,7 @@ void UpdateBall(Ball *ball) {
         printf("acc y: %.3f\n", ball->acc.y);
     }
 
+    // update velocity
     ball->vel.x += ball->acc.x;
     ball->vel.y += ball->acc.y;
     if (absolute(ball->vel.x) > MAX_VELOCITY) {
@@ -89,7 +94,7 @@ void UpdateBall(Ball *ball) {
         ball->vel.y = MAX_VELOCITY*sign(ball->vel.y);
     }
 
-
+    // update position
     ball->pos.x += ball->vel.x;
     ball->pos.y += ball->vel.y;
 }
@@ -134,7 +139,8 @@ void UpdateDrawFrame(Game *game) {
         DrawText("First game", GetFontDefault().baseSize, screenHeight/32, 20, LIGHTGRAY);
         DrawLine(screenWidth/2, screenHeight, screenWidth/2, 0, DARKGREEN);
         DrawCircle(game->ball->pos.x, game->ball->pos.y, 8, LIGHTGRAY);
-
+        DrawRectangle(game->p1->pos.x, game->p1->pos.y - PLAYER_RECT_H*0.5, PLAYER_RECT_W, PLAYER_RECT_H, LIGHTGRAY);
+        DrawRectangle(game->p2->pos.x, game->p2->pos.y - PLAYER_RECT_H*0.5, PLAYER_RECT_W, PLAYER_RECT_H, LIGHTGRAY);
 
     EndDrawing();
 }
