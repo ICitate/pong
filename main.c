@@ -18,10 +18,11 @@ typedef struct {
     Vector2 pos;
     Vector2 vel;
     Vector2 acc;
+    float rad;
 } Ball;
 
 typedef struct {
-    Vector2 pos;
+    Rectangle rec;
 } Player;
 
 typedef struct {
@@ -59,44 +60,54 @@ Ball NewBall() {
         .x = 6,
         .y = 0 
     };
-    Ball ball = { pos, vel, acc };
+    float rad = 8;
+    Ball ball = { pos, vel, acc, rad };
     return ball;
 }
 
 Player NewPlayer(float x, float y) {
-    Vector2 pos = { x, y };
-    Player p = { pos };
+    Rectangle rec = { x, y, PLAYER_RECT_W, PLAYER_RECT_H };
+    Player p = { rec };
     return p;
 }
 
-void UpdateBall(Ball *ball) {
-    if (ball->pos.x < 0 || ball->pos.x > screenWidth) {
-        printf("OUT OF BOUNDS IN X\n");
-        ball->acc.x *= -sign(ball->pos.x * ball->acc.x);
-        printf("acc x: %.3f\n", ball->acc.x);
+void UpdateBall(Ball *ball, Player *p1, Player *p2) {
+    { // update acceleration
+        // check collision in Y
+        if (ball->pos.y < 0 || ball->pos.y > screenHeight) {
+            //printf("OUT OF BOUNDS IN Y\n");
+            ball->acc.y *= -sign(ball->pos.y * ball->acc.y);
+            printf("acc y: %.3f\n", ball->acc.y);
+        }
+
+        if (CheckCollisionCircleRec(ball->pos, ball->rad, p1->rec)) {
+            printf("COLLIDED\n");
+            ball->acc.x = absolute(ball->acc.x);
+            printf("acc x: %.3f\n", ball->acc.x);
+        }
+
+        if (CheckCollisionCircleRec(ball->pos, ball->rad, p2->rec)) {
+            printf("COLLIDED\n");
+            ball->acc.x = -absolute(ball->acc.x);
+            printf("acc x: %.3f\n", ball->acc.x);
+        }
     }
 
-    // out of bounds in y
-    if (ball->pos.y < 0 || ball->pos.y > screenHeight) {
-        printf("OUT OF BOUNDS IN Y\n");
-        ball->acc.y *= -sign(ball->pos.y * ball->acc.y);
-        ball->vel.y *= -sign(ball->pos.y * ball->acc.y);
-        printf("acc y: %.3f\n", ball->acc.y);
+    { // update velocity
+        ball->vel.x += ball->acc.x;
+        ball->vel.y += ball->acc.y;
+        if (absolute(ball->vel.x) > MAX_VELOCITY) {
+            ball->vel.x = MAX_VELOCITY*sign(ball->vel.x);
+        }
+        if (absolute(ball->vel.y) > MAX_VELOCITY) {
+            ball->vel.y = MAX_VELOCITY*sign(ball->vel.y);
+        }
     }
 
-    // update velocity
-    ball->vel.x += ball->acc.x;
-    ball->vel.y += ball->acc.y;
-    if (absolute(ball->vel.x) > MAX_VELOCITY) {
-        ball->vel.x = MAX_VELOCITY*sign(ball->vel.x);
+    { // update position
+        ball->pos.x += ball->vel.x;
+        ball->pos.y += ball->vel.y;
     }
-    if (absolute(ball->vel.y) > MAX_VELOCITY) {
-        ball->vel.y = MAX_VELOCITY*sign(ball->vel.y);
-    }
-
-    // update position
-    ball->pos.x += ball->vel.x;
-    ball->pos.y += ball->vel.y;
 }
 
 int main() {
@@ -129,7 +140,7 @@ int main() {
 
 void UpdateDrawFrame(Game *game) {
     // update
-    UpdateBall(game->ball);
+    UpdateBall(game->ball, game->p1, game->p2);
     printf("ball (x = %.3f, y = %.3f)\n", game->ball->pos.x, game->ball->pos.y);
 
     // draw
@@ -138,9 +149,9 @@ void UpdateDrawFrame(Game *game) {
         ClearBackground(DARKGRAY);
         DrawText("First game", GetFontDefault().baseSize, screenHeight/32, 20, LIGHTGRAY);
         DrawLine(screenWidth/2, screenHeight, screenWidth/2, 0, DARKGREEN);
-        DrawCircle(game->ball->pos.x, game->ball->pos.y, 8, LIGHTGRAY);
-        DrawRectangle(game->p1->pos.x, game->p1->pos.y - PLAYER_RECT_H*0.5, PLAYER_RECT_W, PLAYER_RECT_H, LIGHTGRAY);
-        DrawRectangle(game->p2->pos.x, game->p2->pos.y - PLAYER_RECT_H*0.5, PLAYER_RECT_W, PLAYER_RECT_H, LIGHTGRAY);
+        DrawCircle(game->ball->pos.x, game->ball->pos.y, game->ball->rad, LIGHTGRAY);
+        DrawRectangle(game->p1->rec.x, game->p1->rec.y - game->p1->rec.height*0.5, game->p1->rec.width, game->p1->rec.height, LIGHTGRAY);
+        DrawRectangle(game->p2->rec.x, game->p2->rec.y - game->p1->rec.height*0.5, game->p1->rec.width, game->p1->rec.height, LIGHTGRAY);
 
     EndDrawing();
 }
