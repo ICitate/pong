@@ -19,6 +19,7 @@ typedef struct {
     Vector2 vel;
     Vector2 acc;
     float rad;
+    int isColliding;
 } Ball;
 
 typedef struct {
@@ -61,7 +62,8 @@ Ball NewBall() {
         .y = 0 
     };
     float rad = 8;
-    Ball ball = { pos, vel, acc, rad };
+    int isColliding = 0;
+    Ball ball = { pos, vel, acc, rad, isColliding };
     return ball;
 }
 
@@ -72,6 +74,8 @@ Player NewPlayer(float x, float y) {
 }
 
 void UpdateBall(Ball *ball, Player *p1, Player *p2) {
+    ball->isColliding = 0;
+
     { // update acceleration
         // check collision in Y
         if (ball->pos.y < 0 || ball->pos.y > screenHeight) {
@@ -82,14 +86,16 @@ void UpdateBall(Ball *ball, Player *p1, Player *p2) {
 
         if (CheckCollisionCircleRec(ball->pos, ball->rad, p1->rec)) {
             printf("COLLIDED\n");
-            ball->acc.x = absolute(ball->acc.x);
+            ball->acc.x = 8;
             printf("acc x: %.3f\n", ball->acc.x);
+            ball->isColliding = 1;
         }
 
         if (CheckCollisionCircleRec(ball->pos, ball->rad, p2->rec)) {
             printf("COLLIDED\n");
-            ball->acc.x = -absolute(ball->acc.x);
+            ball->acc.x = -8;
             printf("acc x: %.3f\n", ball->acc.x);
+            ball->isColliding = 1;
         }
     }
 
@@ -119,8 +125,8 @@ int main() {
     SetTargetFPS(60);
 
     Ball ball = NewBall();
-    Player p1 = NewPlayer(10, screenHeight * 0.5);
-    Player p2 = NewPlayer(screenWidth - 10, screenHeight * 0.5);
+    Player p1 = NewPlayer(PLAYER_RECT_W * 2, screenHeight * 0.5);
+    Player p2 = NewPlayer(screenWidth - PLAYER_RECT_W * 3, screenHeight * 0.5);
     Game game = {
         &ball,
         &p1,
@@ -149,9 +155,13 @@ void UpdateDrawFrame(Game *game) {
         ClearBackground(DARKGRAY);
         DrawText("First game", GetFontDefault().baseSize, screenHeight/32, 20, LIGHTGRAY);
         DrawLine(screenWidth/2, screenHeight, screenWidth/2, 0, DARKGREEN);
-        DrawCircle(game->ball->pos.x, game->ball->pos.y, game->ball->rad, LIGHTGRAY);
+        DrawLine(screenWidth, screenHeight, screenWidth, 0, DARKGREEN);
+        DrawLine(1, screenHeight, 1, 1, DARKGREEN);
+        DrawCircle(game->ball->pos.x, game->ball->pos.y, game->ball->rad, game->ball->isColliding ? RED : LIGHTGRAY);
+        DrawLine(game->p1->rec.x, 0, game->p1->rec.x, screenHeight, DARKBLUE);
+        DrawLine(game->p2->rec.x + game->p2->rec.width, 0, game->p2->rec.x + game->p2->rec.width, screenHeight, DARKBLUE);
         DrawRectangle(game->p1->rec.x, game->p1->rec.y - game->p1->rec.height*0.5, game->p1->rec.width, game->p1->rec.height, LIGHTGRAY);
-        DrawRectangle(game->p2->rec.x, game->p2->rec.y - game->p1->rec.height*0.5, game->p1->rec.width, game->p1->rec.height, LIGHTGRAY);
+        DrawRectangle(game->p2->rec.x, game->p2->rec.y - game->p2->rec.height*0.5, game->p2->rec.width, game->p2->rec.height, LIGHTGRAY);
 
     EndDrawing();
 }
