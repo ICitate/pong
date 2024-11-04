@@ -24,6 +24,7 @@ typedef struct {
 
 typedef struct {
     Rectangle rec;
+    int score;
 } Player;
 
 typedef struct {
@@ -73,8 +74,32 @@ Player NewPlayer(float x, float y) {
     return p;
 }
 
+void ResetBall(Ball *ball, int direction) {
+    // reset ball
+    ball->pos.x = screenWidth * 0.5;
+    ball->pos.y = screenHeight * 0.5;
+    ball->vel.x = 5 * direction;
+    ball->vel.y = 0;
+    ball->acc.x = 6 * direction;
+    ball->acc.y = 0;
+    ball->isColliding = 0;
+}
+
 void UpdateBall(Ball *ball, Player *p1, Player *p2) {
     ball->isColliding = 0;
+
+    { // out of bounds in x
+        if (ball->pos.x < 0) {
+            p2->score += 1;
+            ResetBall(ball, 1);
+            return;
+        } 
+        if (ball->pos.x > screenWidth) {
+            p1->score += 1;
+            ResetBall(ball, -1);
+            return;
+        }
+    }
 
     { // update acceleration
         // check collision in Y
@@ -125,8 +150,8 @@ int main() {
     SetTargetFPS(60);
 
     Ball ball = NewBall();
-    Player p1 = NewPlayer(PLAYER_RECT_W * 2, screenHeight * 0.5);
-    Player p2 = NewPlayer(screenWidth - PLAYER_RECT_W * 3, screenHeight * 0.5);
+    Player p1 = NewPlayer(PLAYER_RECT_W * 2, screenHeight * 0.5 - PLAYER_RECT_H * 0.5);
+    Player p2 = NewPlayer(screenWidth - PLAYER_RECT_W * 3, screenHeight * 0.5 - PLAYER_RECT_H * 0.5);
     Game game = {
         &ball,
         &p1,
@@ -145,7 +170,22 @@ int main() {
 }
 
 void UpdateDrawFrame(Game *game) {
+
     // update
+    if (IsKeyDown(KEY_S)) {
+        game->p1->rec.y += 5;
+    }
+    if (IsKeyDown(KEY_W)) {
+        game->p1->rec.y -= 5;
+    }
+
+    if (IsKeyDown(KEY_DOWN)) {
+        game->p2->rec.y += 5;
+    }
+    if (IsKeyDown(KEY_UP)) {
+        game->p2->rec.y -= 5;
+    }
+
     UpdateBall(game->ball, game->p1, game->p2);
     printf("ball (x = %.3f, y = %.3f)\n", game->ball->pos.x, game->ball->pos.y);
 
@@ -153,15 +193,15 @@ void UpdateDrawFrame(Game *game) {
     BeginDrawing();
 
         ClearBackground(DARKGRAY);
-        DrawText("First game", GetFontDefault().baseSize, screenHeight/32, 20, LIGHTGRAY);
+        DrawText(TextFormat("%d | %d", game->p1->score, game->p2->score), screenWidth/2 - 42, 10, 40, RAYWHITE);
         DrawLine(screenWidth/2, screenHeight, screenWidth/2, 0, DARKGREEN);
         DrawLine(screenWidth, screenHeight, screenWidth, 0, DARKGREEN);
         DrawLine(1, screenHeight, 1, 1, DARKGREEN);
         DrawCircle(game->ball->pos.x, game->ball->pos.y, game->ball->rad, game->ball->isColliding ? RED : LIGHTGRAY);
         DrawLine(game->p1->rec.x, 0, game->p1->rec.x, screenHeight, DARKBLUE);
         DrawLine(game->p2->rec.x + game->p2->rec.width, 0, game->p2->rec.x + game->p2->rec.width, screenHeight, DARKBLUE);
-        DrawRectangle(game->p1->rec.x, game->p1->rec.y - game->p1->rec.height*0.5, game->p1->rec.width, game->p1->rec.height, LIGHTGRAY);
-        DrawRectangle(game->p2->rec.x, game->p2->rec.y - game->p2->rec.height*0.5, game->p2->rec.width, game->p2->rec.height, LIGHTGRAY);
+        DrawRectangle(game->p1->rec.x, game->p1->rec.y, game->p1->rec.width, game->p1->rec.height, LIGHTGRAY);
+        DrawRectangle(game->p2->rec.x, game->p2->rec.y, game->p2->rec.width, game->p2->rec.height, LIGHTGRAY);
 
     EndDrawing();
 }
