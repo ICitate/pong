@@ -17,7 +17,6 @@ int PLAYER_RECT_H = 80;
 typedef struct {
     Vector2 pos;
     Vector2 vel;
-    Vector2 acc;
     float rad;
     int isColliding;
 } Ball;
@@ -55,16 +54,12 @@ Ball NewBall() {
         .y = screenHeight * 0.5 
     };
     Vector2 vel = {
-        .x = 5,
-        .y = 0 
-    };
-    Vector2 acc = {
         .x = 6,
-        .y = 0 
+        .y = -7.5
     };
     float rad = 8;
     int isColliding = 0;
-    Ball ball = { pos, vel, acc, rad, isColliding };
+    Ball ball = { pos, vel, rad, isColliding };
     return ball;
 }
 
@@ -78,10 +73,8 @@ void ResetBall(Ball *ball, int direction) {
     // reset ball
     ball->pos.x = screenWidth * 0.5;
     ball->pos.y = screenHeight * 0.5;
-    ball->vel.x = 5 * direction;
-    ball->vel.y = 0;
-    ball->acc.x = 6 * direction;
-    ball->acc.y = 0;
+    ball->vel.x = 6 * direction;
+    ball->vel.y = -7.5;
     ball->isColliding = 0;
 }
 
@@ -101,32 +94,28 @@ void UpdateBall(Ball *ball, Player *p1, Player *p2) {
         }
     }
 
-    { // update acceleration
+    { // update velocity
         // check collision in Y
         if (ball->pos.y < 0 || ball->pos.y > screenHeight) {
             //printf("OUT OF BOUNDS IN Y\n");
-            ball->acc.y *= -sign(ball->pos.y * ball->acc.y);
-            printf("acc y: %.3f\n", ball->acc.y);
+            ball->vel.y *= -1;
         }
 
         if (CheckCollisionCircleRec(ball->pos, ball->rad, p1->rec)) {
             printf("COLLIDED\n");
-            ball->acc.x = 8;
-            printf("acc x: %.3f\n", ball->acc.x);
+            float normalX = 1;
+            float normalY = 0;
+
+            ball->vel.x *= -1;
             ball->isColliding = 1;
         }
 
         if (CheckCollisionCircleRec(ball->pos, ball->rad, p2->rec)) {
             printf("COLLIDED\n");
-            ball->acc.x = -8;
-            printf("acc x: %.3f\n", ball->acc.x);
+            ball->vel.x *= -1;
             ball->isColliding = 1;
         }
-    }
 
-    { // update velocity
-        ball->vel.x += ball->acc.x;
-        ball->vel.y += ball->acc.y;
         if (absolute(ball->vel.x) > MAX_VELOCITY) {
             ball->vel.x = MAX_VELOCITY*sign(ball->vel.x);
         }
