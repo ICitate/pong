@@ -1,5 +1,4 @@
 #include "raylib.h"
-#include <stdio.h>
 
 #if defined(PLATFORM_WEB)
     #include <emscripten/emscripten.h>
@@ -11,14 +10,13 @@ int screenHeight = 450;
 
 int MAX_VELOCITY = 10;
 
-int PLAYER_RECT_W = 8;
+int PLAYER_RECT_W = 10;
 int PLAYER_RECT_H = 80;
 
 typedef struct {
     Vector2 pos;
     Vector2 vel;
     float rad;
-    int isColliding;
 } Ball;
 
 typedef struct {
@@ -30,6 +28,7 @@ typedef struct {
     Ball *ball;
     Player *p1;
     Player *p2;
+    int ended;
 } Game;
 
 int sign(float n) {
@@ -58,8 +57,7 @@ Ball NewBall() {
         .y = -7.5
     };
     float rad = 8;
-    int isColliding = 0;
-    Ball ball = { pos, vel, rad, isColliding };
+    Ball ball = { pos, vel, rad };
     return ball;
 }
 
@@ -74,12 +72,10 @@ void ResetBall(Ball *ball, int direction) {
     ball->pos.x = screenWidth * 0.5;
     ball->pos.y = screenHeight * 0.5;
     ball->vel.x = 6 * direction;
-    ball->vel.y = -7.5;
-    ball->isColliding = 0;
+    ball->vel.y = 7.5 * direction;
 }
 
 void UpdateBall(Ball *ball, Player *p1, Player *p2) {
-    ball->isColliding = 0;
 
     { // out of bounds in x
         if (ball->pos.x < 0) {
@@ -97,23 +93,16 @@ void UpdateBall(Ball *ball, Player *p1, Player *p2) {
     { // update velocity
         // check collision in Y
         if (ball->pos.y < 0 || ball->pos.y > screenHeight) {
-            //printf("OUT OF BOUNDS IN Y\n");
             ball->vel.y *= -1;
         }
 
-        if (CheckCollisionCircleRec(ball->pos, ball->rad, p1->rec)) {
-            printf("COLLIDED\n");
-            float normalX = 1;
-            float normalY = 0;
+        if (CheckCollisionCircleRec(ball->pos, ball->rad, p1->rec) || 
+            CheckCollisionCircleRec(ball->pos, ball->rad, p2->rec)) {
+            if (ball->pos.x < p1->rec.x + p1->rec.width || ball->pos.x > p2->rec.x) {
+                ball->vel.y *= -1;
+            }
 
             ball->vel.x *= -1;
-            ball->isColliding = 1;
-        }
-
-        if (CheckCollisionCircleRec(ball->pos, ball->rad, p2->rec)) {
-            printf("COLLIDED\n");
-            ball->vel.x *= -1;
-            ball->isColliding = 1;
         }
 
         if (absolute(ball->vel.x) > MAX_VELOCITY) {
@@ -145,6 +134,7 @@ int main() {
         &ball,
         &p1,
         &p2,
+        0,
     };
 
     // Main game loop
@@ -161,36 +151,69 @@ int main() {
 void UpdateDrawFrame(Game *game) {
 
     // update
-    if (IsKeyDown(KEY_S)) {
-        game->p1->rec.y += 5;
-    }
-    if (IsKeyDown(KEY_W)) {
-        game->p1->rec.y -= 5;
+    if (game->ended == 0) {
+        if (IsKeyDown(KEY_S)) {
+            if (game->p1->rec.y + 5 + game->p1->rec.height < screenHeight) {
+                game->p1->rec.y += 5;
+            }
+        }
+        if (IsKeyDown(KEY_W)) {
+            if (game->p1->rec.y - 5 > 0) {
+                game->p1->rec.y -= 5;
+            }
+        }
+
+        if (IsKeyDown(KEY_DOWN)) {
+            if (game->p2->rec.y + 5 + game->p2->rec.height < screenHeight) {
+                game->p2->rec.y += 5;
+            }
+        }
+        if (IsKeyDown(KEY_UP)) {
+            if (game->p2->rec.y - 5 > 0) {
+                game->p2->rec.y -= 5;
+            }
+        }
+
+        UpdateBall(game->ball, game->p1, game->p2);
     }
 
-    if (IsKeyDown(KEY_DOWN)) {
-        game->p2->rec.y += 5;
+    if (IsKeyDown(KEY_ENTER)) {
+        game->ended = 0;
+        game->ball->pos.x = screenWidth * 0.5;
+        game->ball->pos.y = screenHeight * 0.5;
+        game->ball->vel.x = 6;
+        game->ball->vel.y = -7.5;
+        game->p1->rec.x = PLAYER_RECT_W * 2;
+        game->p1->rec.y = screenHeight * 0.5 - PLAYER_RECT_H * 0.5;
+        game->p1->score = 0;
+        game->p2->rec.x = screenWidth - PLAYER_RECT_W * 3;
+        game->p2->rec.y = screenHeight * 0.5 - PLAYER_RECT_H * 0.5;
+        game->p2->score = 0;
     }
-    if (IsKeyDown(KEY_UP)) {
-        game->p2->rec.y -= 5;
-    }
-
-    UpdateBall(game->ball, game->p1, game->p2);
-    printf("ball (x = %.3f, y = %.3f)\n", game->ball->pos.x, game->ball->pos.y);
 
     // draw
     BeginDrawing();
+        ClearBackground(BLACK);
 
-        ClearBackground(DARKGRAY);
         DrawText(TextFormat("%d | %d", game->p1->score, game->p2->score), screenWidth/2 - 42, 10, 40, RAYWHITE);
-        DrawLine(screenWidth/2, screenHeight, screenWidth/2, 0, DARKGREEN);
-        DrawLine(screenWidth, screenHeight, screenWidth, 0, DARKGREEN);
-        DrawLine(1, screenHeight, 1, 1, DARKGREEN);
-        DrawCircle(game->ball->pos.x, game->ball->pos.y, game->ball->rad, game->ball->isColliding ? RED : LIGHTGRAY);
-        DrawLine(game->p1->rec.x, 0, game->p1->rec.x, screenHeight, DARKBLUE);
-        DrawLine(game->p2->rec.x + game->p2->rec.width, 0, game->p2->rec.x + game->p2->rec.width, screenHeight, DARKBLUE);
+        if (game->ended == 0) {
+            DrawCircle(game->ball->pos.x, game->ball->pos.y, game->ball->rad, WHITE);
+        }
         DrawRectangle(game->p1->rec.x, game->p1->rec.y, game->p1->rec.width, game->p1->rec.height, LIGHTGRAY);
         DrawRectangle(game->p2->rec.x, game->p2->rec.y, game->p2->rec.width, game->p2->rec.height, LIGHTGRAY);
+
+        if (game->ended == 1) {
+            DrawText("Press enter to play again", 0.5*(screenWidth-MeasureText("Player 1 Wins!", 20)), screenHeight-30, 20, RAYWHITE);
+        }
+
+        if (game->p1->score >= 10) {
+            DrawText("Player 1 Wins!", 0.5*(screenWidth-MeasureText("Player 1 Wins!", 50)), 0.5*(screenHeight-50), 50, BLUE);
+            game->ended = 1;
+        }
+        if (game->p2->score >= 10) {
+            DrawText("Player 2 Wins!", 0.5*(screenWidth-MeasureText("Player 2 Wins!", 50)), 0.5*(screenHeight-50), 50, BLUE);
+            game->ended = 1;
+        }
 
     EndDrawing();
 }
